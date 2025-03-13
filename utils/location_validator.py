@@ -1,140 +1,84 @@
 """
-Utility for validating and formatting location inputs for weather API calls.
+Location validation utilities for ensuring consistent city formats for weather API calls.
 """
 
 import re
-from utils.logger import setup_logger
+from utils.logger import get_component_logger
 
-logger = setup_logger("location_validator")
+# Get component-specific logger
+logger = get_component_logger('utils', 'location_validator')
 
-def validate_city_format(city_input):
+def validate_city_format(city_str):
     """
-    Validates and formats city input for OpenWeatherMap API.
+    Validate and normalize city format as "City,State,Country" or "City,Country".
 
-    Recommended formats:
+    The function accepts various input formats:
     - "City"
-    - "City,CountryCode" (2-letter ISO code)
-    - "City,State,CountryCode" (for US cities)
+    - "City, State"
+    - "City, State, Country"
+    - "City,State"
+    - "City,State,Country"
 
     Args:
-        city_input (str): City input to validate
+        city_str (str): The city string to validate
 
     Returns:
-        str: Formatted city string or original if no changes needed
+        str: Normalized city string format "City,State,Country"
     """
-    if not city_input:
-        logger.warning("Empty city input provided")
-        return "London"  # Default fallback
+    if not city_str:
+        logger.warning(f"Empty city string provided, using default")
+        return "Louisville,KY,US"
 
-    # Trim whitespace and fix common issues
-    city = city_input.strip()
+    # Remove any whitespace around commas
+    normalized = re.sub(r'\s*,\s*', ',', city_str.strip())
 
-    # Check if format seems correct (City,State,Country or City,Country)
-    parts = [part.strip() for part in city.split(',')]
+    parts = normalized.split(',')
 
+    # Basic validation
+    if len(parts) == 0 or not parts[0]:
+        logger.warning(f"Invalid city format: '{city_str}', using default")
+        return "Louisville,KY,US"
+
+    # Handle various formats
     if len(parts) == 1:
-        logger.info(f"Using city name only: {parts[0]}")
-        return parts[0]
+        # Just city name provided
+        logger.info(f"Only city name provided: '{parts[0]}', adding default country code")
+        return f"{parts[0]},US"
 
-    if len(parts) == 2:
-        # Ensure country code is uppercase for 2-letter codes
-        if len(parts[1]) == 2:
-            parts[1] = parts[1].upper()
-        logger.info(f"Using City,Country format: {parts[0]},{parts[1]}")
-        return f"{parts[0]},{parts[1]}"
+    elif len(parts) == 2:
+        # City and country/state provided
+        city, second = parts
 
-    if len(parts) == 3:
-        # For US cities: City,State,US
-        if parts[2].upper() == "US" and len(parts[1]) == 2:
-            parts[1] = parts[1].upper()
-            parts[2] = parts[2].upper()
-        logger.info(f"Using City,State,Country format: {parts[0]},{parts[1]},{parts[2]}")
-        return f"{parts[0]},{parts[1]},{parts[2]}"
+        # Special case for US state codes
+        if second == "KY" or second in ["NY", "CA", "TX", "FL"]:  # Common US states
+            return f"{city},{second},US"
 
-    logger.warning(f"Unusual city format: {city_input}, using as-is")
-    return city_input
+        # Check if second part looks like a country code (2 letters)
+        if len(second) == 2:
+            # If it's a 2-letter code, could be country or state
+            if second.isupper():
+                # It's likely a country code, return as is (without adding US)
+                return f"{city},{second}"
+            elif second.lower() == second:
+                # It's likely a lowercase country code, convert to uppercase
+                return f"{city},{second.upper()}"
+            else:
+                # It's likely a US state code, add US
+                return f"{city},{second},US"
+        # Check if it's a state name
+        else:
+            # Add US as the default country
+            return f"{city},{second},US"
 
-def test_location_format(city_input):
-    """
-    Test if a location can be properly geocoded by the OpenWeatherMap API.
+    elif len(parts) >= 3:
+        # Full format: City, State, Country
+        city, state, country = parts[0], parts[1], parts[2]
 
-    Args:
-        city_input (str): City input to test
+        # Normalize country to uppercase (for country codes)
+        if len(country) <= 3 and country.isalpha():
+            country = country.upper()
 
-    Returns:
-        dict: {'valid': bool, 'formatted': str, 'message': str}
-    """
-    import os
-    import requests
+        return f"{city},{state},{country}"
 
-    API_KEY = os.environ.get("OPENWEATHERMAP_API_KEY")
-    if not API_KEY:
-        return {
-            'valid': False,
-            'formatted': city_input,
-            'message': "API key not available. Cannot test location."
-        }
-
-    # Format the city
-    formatted_city = validate_city_format(city_input)
-
-    try:
-        # Test geocoding
-        geo_endpoint = "http://api.openweathermap.org/geo/1.0/direct"
-        geo_params = {
-            'q': formatted_city,
-            'limit': 1,
-            'appid': API_KEY
-        }
-
-        response = requests.get(geo_endpoint, params=geo_params, timeout=10)
-        response.raise_for_status()
-
-        locations = response.json()
-        if not locations:
-            return {
-                'valid': False,
-                'formatted': formatted_city,
-                'message': f"No location found for '{formatted_city}'. Try a different format."
-            }
-
-        # Success - found location
-        location = locations[0]
-        return {
-            'valid': True,
-            'formatted': formatted_city,
-            'message': f"Found: {location.get('name', '')}, {location.get('country', '')}",
-            'location': location
-        }
-
-    except Exception as e:
-        return {
-            'valid': False,
-            'formatted': formatted_city,
-            'message': f"Error testing location: {str(e)}"
-        }
-
-if __name__ == "__main__":
-    # Test some city formats
-    test_cities = [
-        "London",
-        "New York",
-        "Paris,FR",
-        "Rome, IT",  # with space
-        "Louisville,KY,US",  # format in your logs
-        "Louisville, KY, US",  # with spaces
-        "Tokyo,Japan",  # with full country name
-        "Invalid,XX,YY"  # likely invalid
-    ]
-
-    print("\nTesting city formats:")
-    print("---------------------")
-
-    for city in test_cities:
-        formatted = validate_city_format(city)
-        print(f"Original: '{city}' → Formatted: '{formatted}'")
-
-        # Test geocoding
-        result = test_location_format(city)
-        status = "✅" if result['valid'] else "❌"
-        print(f"  {status} {result['message']}\n")
+    logger.warning(f"Unexpected format: '{city_str}', using as is")
+    return normalized

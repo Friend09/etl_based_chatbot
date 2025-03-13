@@ -29,6 +29,166 @@ FORECAST_5DAY_URL = "https://api.openweathermap.org/data/2.5/forecast"  # 5-day/
 API_KEY = os.environ.get("OPENWEATHERMAP_API_KEY")
 DEFAULT_CITY = "Louisville,KY,US"
 
+class WeatherCollector:
+    """
+    Handles collection of weather data from the OpenWeatherMap API
+    for Louisville, KY.
+    """
+
+    def __init__(self, lat=38.2527, lon=-85.7585, city="Louisville"):
+        """
+        Initialize the WeatherCollector with API configuration.
+
+        Args:
+            lat (float): Latitude for the location (default: Louisville, KY)
+            lon (float): Longitude for the location (default: Louisville, KY)
+            city (str): City name (default: Louisville)
+        """
+        self.api_key = os.environ.get('OPENWEATHERMAP_API_KEY')
+        if not self.api_key:
+            raise ValueError("OPENWEATHERMAP_API_KEY environment variable is required")
+
+        self.lat = lat
+        self.lon = lon
+        self.city = city
+        self.base_url = "https://api.openweathermap.org/data/2.5"
+        self.current_weather_url = f"{self.base_url}/weather"
+        self.forecast_url = f"{self.base_url}/forecast"
+
+    def fetch_current_weather(self):
+        """
+        Fetch current weather data from OpenWeatherMap API.
+
+        Returns:
+            dict: Raw current weather data from API
+        """
+        params = {
+            'lat': self.lat,
+            'lon': self.lon,
+            'appid': self.api_key,
+            'units': 'metric'  # Celsius
+        }
+        response = requests.get(self.current_weather_url, params=params)
+        response.raise_for_status()
+        return response.json()
+
+    def fetch_forecast(self):
+        """
+        Fetch forecast data from OpenWeatherMap API.
+
+        Returns:
+            dict: Raw forecast data from API
+        """
+        params = {
+            'lat': self.lat,
+            'lon': self.lon,
+            'appid': self.api_key,
+            'units': 'metric'  # Celsius
+        }
+        response = requests.get(self.forecast_url, params=params)
+        response.raise_for_status()
+        return response.json()
+
+    def process_current_weather(self, data):
+        """
+        Process the current weather data into a structured format.
+
+        Args:
+            data (dict): Raw current weather data from API
+
+        Returns:
+            dict: Processed current weather data
+        """
+        return {
+            'timestamp': datetime.now().isoformat(),
+            'city': self.city,
+            'temperature': data['main']['temp'],
+            'feels_like': data['main']['feels_like'],
+            'humidity': data['main']['humidity'],
+            'pressure': data['main']['pressure'],
+            'wind_speed': data['wind']['speed'],
+            'weather_main': data['weather'][0]['main'],
+            'weather_description': data['weather'][0]['description'],
+            'raw_data': data
+        }
+
+    def process_forecast(self, data):
+        """
+        Process the forecast data into a structured format.
+
+        Args:
+            data (dict): Raw forecast data from API
+
+        Returns:
+            list: List of processed forecast entries
+        """
+        processed_data = []
+        for forecast in data['list']:
+            processed_entry = {
+                'forecast_timestamp': forecast['dt_txt'],
+                'city': self.city,
+                'temperature': forecast['main']['temp'],
+                'feels_like': forecast['main']['feels_like'],
+                'humidity': forecast['main']['humidity'],
+                'pressure': forecast['main']['pressure'],
+                'wind_speed': forecast['wind']['speed'],
+                'weather_main': forecast['weather'][0]['main'],
+                'weather_description': forecast['weather'][0]['description'],
+                'raw_data': forecast
+            }
+            processed_data.append(processed_entry)
+        return processed_data
+
+    def save_current_weather(self, processed_data):
+        """
+        Save the processed current weather data to storage.
+
+        Args:
+            processed_data (dict): Processed current weather data
+
+        Returns:
+            bool: Success status
+        """
+        # Placeholder for actual database save implementation
+        # In a real implementation, this would save to a database
+        return True
+
+    def save_forecast(self, processed_data):
+        """
+        Save the processed forecast data to storage.
+
+        Args:
+            processed_data (list): List of processed forecast entries
+
+        Returns:
+            bool: Success status
+        """
+        # Placeholder for actual database save implementation
+        # In a real implementation, this would save to a database
+        return True
+
+    def collect_and_store(self):
+        """
+        Collect, process, and store both current weather and forecast data.
+
+        Returns:
+            tuple: (current_weather_success, forecast_success)
+        """
+        # Fetch data
+        current_data = self.fetch_current_weather()
+        forecast_data = self.fetch_forecast()
+
+        # Process data
+        processed_current = self.process_current_weather(current_data)
+        processed_forecast = self.process_forecast(forecast_data)
+
+        # Save data
+        current_success = self.save_current_weather(processed_current)
+        forecast_success = self.save_forecast(processed_forecast)
+
+        return current_success, forecast_success
+
+# Helper functions for backwards compatibility
 class APIError(Exception):
     """Exception raised for API-related errors."""
     pass

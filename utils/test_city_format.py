@@ -11,7 +11,7 @@ project_root = Path(__file__).parent.parent
 if str(project_root) not in sys.path:
     sys.path.insert(0, str(project_root))
 
-from utils.location_validator import test_location_format
+from utils.location_validator import validate_city_format
 
 def main():
     """Test city format for OpenWeatherMap API."""
@@ -22,7 +22,7 @@ def main():
     print(f"\nTesting city format: '{args.city}'")
     print("--------------------------------")
 
-    result = test_location_format(args.city)
+    result = validate_city_format(args.city)
 
     if result['valid']:
         print(f"✅ Success! {result['message']}")
