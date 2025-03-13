@@ -15,7 +15,7 @@ CITY = os.getenv("CITY", "Louisville")
 COUNTRY_CODE = os.getenv("COUNTRY_CODE", "US")
 LAT = float(os.getenv("LAT", "38.2527"))
 LON = float(os.getenv("LON", "-85.7585"))
-COLLECTION_INTERVAL = int(os.getenv("COLLECTION_INTERVAL", "3600"))  # Default: 1 hour
+COLLECTION_INTERVAL = os.getenv("COLLECTION_INTERVAL", 3600)  # Default: 1 hour
 
 # OpenAI API settings
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")

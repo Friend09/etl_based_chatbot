@@ -5,7 +5,9 @@ Provides natural language interface to weather data using OpenAI's GPT model.
 
 import logging
 import json
-import openai
+from openai import OpenAI
+
+client = OpenAI(api_key=OPENAI_API_KEY)
 import pandas as pd
 from datetime import datetime, timedelta
 
@@ -17,7 +19,6 @@ logger = logging.getLogger(__name__)
 
 # Initialize OpenAI client
 if OPENAI_API_KEY:
-    openai.api_key = OPENAI_API_KEY
 else:
     logger.error("OpenAI API key not found in environment variables.")
     raise ValueError("API key not found. Please set OPENAI_API_KEY in .env file.")
@@ -139,15 +140,13 @@ If you're calculating temperature trends or making comparisons, explain your rea
 """
 
         # Call OpenAI API
-        response = openai.ChatCompletion.create(
-            model=OPENAI_MODEL,
-            messages=[
-                {"role": "system", "content": system_message},
-                {"role": "user", "content": query}
-            ],
-            max_tokens=1000,
-            temperature=0.7
-        )
+        response = client.chat.completions.create(model=OPENAI_MODEL,
+        messages=[
+            {"role": "system", "content": system_message},
+            {"role": "user", "content": query}
+        ],
+        max_tokens=1000,
+        temperature=0.7)
 
         # Extract and return the response
         answer = response.choices[0].message.content.strip()

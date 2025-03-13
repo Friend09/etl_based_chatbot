@@ -34,7 +34,7 @@ def main():
     """Run the Flask application."""
     app = create_app()
     logger.info("Starting the Weather ETL Chatbot web application")
-    app.run(host="0.0.0.0", port=5000)
+    app.run(host="0.0.0.0", port=5005)
 
 if __name__ == "__main__":
     # Configure basic logging
