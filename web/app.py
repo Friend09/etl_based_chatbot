@@ -8,8 +8,15 @@ from flask import Flask
 from web.routes import register_routes
 from config.settings import FLASK_CONFIG, TEMPLATES_DIR, STATIC_DIR
 
-# Set up logging
-logger = logging.getLogger(__name__)
+# Import logging utilities
+from utils import get_component_logger
+from config.logging_config import configure_root_logger
+
+# Configure the root logger
+configure_root_logger()
+
+# Create a logger for this module
+logger = get_component_logger('web', 'app')
 
 def create_app():
     """

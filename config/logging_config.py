@@ -1,92 +1,175 @@
 """
-Logging configuration for the Weather ETL Chatbot application.
-Sets up logging handlers and formatters for different components.
+Logging configuration module.
+
+This module provides functions to configure the logging system for the application.
 """
 
+import logging.config
 import os
-import logging
-from logging.handlers import RotatingFileHandler, TimedRotatingFileHandler
-from config.settings import LOG_DIR
+import functools
+from pathlib import Path
 
-def configure_logging(name="weather_etl_chatbot", log_to_console=True):
+# Import and re-export constants
+from .logging_constants import (
+    DEFAULT_LOG_LEVEL, LOG_LEVELS,
+    LOG_DIR, ETL_LOG_FILE, WEB_LOG_FILE, DB_LOG_FILE
+)
+
+# Make constants available for import from this module
+__all__ = [
+    'DEFAULT_LOG_LEVEL', 'LOG_LEVELS', 'LOG_DIR',
+    'ETL_LOG_FILE', 'WEB_LOG_FILE', 'DB_LOG_FILE',
+    'configure_logging', 'get_logger', 'set_log_level', 'log_function_call'
+]
+
+def configure_logging(log_dir="logs", level=logging.INFO):
     """
-    Configure application logging with file and optional console output.
+    Configure the logging system with detailed settings.
 
     Args:
-        name (str): Logger name, used for the log file name
-        log_to_console (bool): Whether to log to console as well as file
+        log_dir: Directory to store logs
+        level: Default logging level
 
     Returns:
-        logging.Logger: Configured logger instance
+        None
     """
-    # Create logger
+    # Ensure log directory exists
+    Path(log_dir).mkdir(parents=True, exist_ok=True)
+
+    # Define logging configuration
+    config = {
+        'version': 1,
+        'formatters': {
+            'standard': {
+                'format': '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+            },
+            'detailed': {
+                'format': '%(asctime)s - %(name)s - %(levelname)s - %(module)s - %(funcName)s - %(message)s'
+            }
+        },
+        'handlers': {
+            'console': {
+                'class': 'logging.StreamHandler',
+                'level': level,
+                'formatter': 'standard',
+                'stream': 'ext://sys.stdout'
+            },
+            'file': {
+                'class': 'logging.handlers.RotatingFileHandler',
+                'level': logging.DEBUG,
+                'formatter': 'detailed',
+                'filename': os.path.join(log_dir, 'application.log'),
+                'maxBytes': 10485760,  # 10MB
+                'backupCount': 5
+            },
+            'error_file': {
+                'class': 'logging.handlers.RotatingFileHandler',
+                'level': logging.ERROR,
+                'formatter': 'detailed',
+                'filename': os.path.join(log_dir, 'errors.log'),
+                'maxBytes': 10485760,  # 10MB
+                'backupCount': 5
+            }
+        },
+        'loggers': {
+            '': {  # Root logger
+                'handlers': ['console', 'file', 'error_file'],
+                'level': logging.DEBUG,
+                'propagate': True
+            }
+        }
+    }
+
+    # Apply configuration
+    logging.config.dictConfig(config)
+    logging.info("Logging system configured")
+
+    return logging.getLogger()
+
+def get_logger(name, log_file=None, console=True, level=None):
+    """
+    Get a configured logger instance.
+
+    Args:
+        name: Logger name
+        log_file: Optional log file path
+        console: Whether to log to console
+        level: Log level (defaults to DEFAULT_LOG_LEVEL)
+
+    Returns:
+        Logger instance
+    """
     logger = logging.getLogger(name)
-    logger.setLevel(logging.INFO)
 
-    # Create formatter
-    formatter = logging.Formatter(
-        '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-    )
+    # Only configure if handlers aren't already set up
+    if not logger.handlers:
+        # Set level (from param or env or default)
+        level = level or os.environ.get('LOG_LEVEL', DEFAULT_LOG_LEVEL)
+        if isinstance(level, str):
+            level = LOG_LEVELS.get(level.lower(), DEFAULT_LOG_LEVEL)
 
-    # Create file handler for general logs (rotate by size)
-    log_file = os.path.join(LOG_DIR, f"{name}.log")
-    file_handler = RotatingFileHandler(
-        log_file,
-        maxBytes=10*1024*1024,  # 10MB
-        backupCount=5
-    )
-    file_handler.setLevel(logging.INFO)
-    file_handler.setFormatter(formatter)
+        logger.setLevel(level)
 
-    # Create file handler for errors (rotate daily)
-    error_log_file = os.path.join(LOG_DIR, f"{name}_error.log")
-    error_file_handler = TimedRotatingFileHandler(
-        error_log_file,
-        when="midnight",
-        interval=1,
-        backupCount=30
-    )
-    error_file_handler.setLevel(logging.ERROR)
-    error_file_handler.setFormatter(formatter)
+        # Create formatter
+        formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 
-    # Add handlers to logger
-    logger.addHandler(file_handler)
-    logger.addHandler(error_file_handler)
+        # Add console handler if requested
+        if console:
+            console_handler = logging.StreamHandler()
+            console_handler.setFormatter(formatter)
+            logger.addHandler(console_handler)
 
-    # Optionally add console handler
-    if log_to_console:
-        console_handler = logging.StreamHandler()
-        console_handler.setLevel(logging.INFO)
-        console_handler.setFormatter(formatter)
-        logger.addHandler(console_handler)
+        # Add file handler if specified
+        if log_file:
+            # Ensure directory exists
+            log_dir = os.path.dirname(log_file)
+            Path(log_dir).mkdir(parents=True, exist_ok=True)
+
+            file_handler = logging.handlers.RotatingFileHandler(
+                log_file,
+                maxBytes=10485760,  # 10MB
+                backupCount=5
+            )
+            file_handler.setFormatter(formatter)
+            logger.addHandler(file_handler)
 
     return logger
 
-def get_component_logger(component_name, parent_logger="weather_etl_chatbot"):
+def set_log_level(logger, level):
     """
-    Get a logger for a specific component, inheriting parent logger settings.
+    Set log level for a logger and all its handlers.
 
     Args:
-        component_name (str): Component name (etl, web, etc.)
-        parent_logger (str): Parent logger name
+        logger: Logger to modify
+        level: New log level
+    """
+    if isinstance(level, str):
+        level = LOG_LEVELS.get(level.lower(), DEFAULT_LOG_LEVEL)
+
+    logger.setLevel(level)
+    for handler in logger.handlers:
+        handler.setLevel(level)
+
+def log_function_call(logger):
+    """
+    Decorator factory for logging function calls.
+
+    Args:
+        logger: Logger to use for logging
 
     Returns:
-        logging.Logger: Component-specific logger
+        Decorator function
     """
-    logger_name = f"{parent_logger}.{component_name}"
-    return logging.getLogger(logger_name)
-
-def configure_all_loggers():
-    """
-    Configure all application loggers.
-    This can be called from the main application entry point.
-    """
-    # Configure root logger
-    root_logger = configure_logging("weather_etl_chatbot")
-
-    # Configure component-specific loggers
-    components = ["etl", "web", "database"]
-    for component in components:
-        get_component_logger(component)
-
-    return root_logger
+    def decorator(func):
+        @functools.wraps(func)
+        def wrapper(*args, **kwargs):
+            logger.debug(f"Calling {func.__name__}")
+            try:
+                result = func(*args, **kwargs)
+                logger.debug(f"Completed {func.__name__}")
+                return result
+            except Exception as e:
+                logger.error(f"Error in {func.__name__}: {str(e)}")
+                raise
+        return wrapper
+    return decorator

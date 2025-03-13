@@ -1,0 +1,46 @@
+{
+  "coord": {
+    "lon": -85.7594,
+    "lat": 38.2542
+  },
+  "weather": [
+    {
+      "id": 803,
+      "main": "Clouds",
+      "description": "broken clouds",
+      "icon": "04d"
+    }
+  ],
+  "base": "stations",
+  "main": {
+    "temp": 23.89,
+    "feels_like": 23.59,
+    "temp_min": 22.81,
+    "temp_max": 25.06,
+    "pressure": 1010,
+    "humidity": 48,
+    "sea_level": 1010,
+    "grnd_level": 990
+  },
+  "visibility": 10000,
+  "wind": {
+    "speed": 0.89,
+    "deg": 159,
+    "gust": 3.13
+  },
+  "clouds": {
+    "all": 80
+  },
+  "dt": 1741888325,
+  "sys": {
+    "type": 2,
+    "id": 2010269,
+    "country": "US",
+    "sunrise": 1741867019,
+    "sunset": 1741909682
+  },
+  "timezone": -14400,
+  "id": 4299276,
+  "name": "Louisville",
+  "cod": 200
+}

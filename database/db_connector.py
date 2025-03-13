@@ -9,7 +9,11 @@ import logging
 from contextlib import contextmanager
 from config.settings import DB_CONFIG
 
-logger = logging.getLogger(__name__)
+# Import logging utilities
+from utils import get_component_logger, log_db_function, log_structured
+
+# Create a logger for this module
+logger = get_component_logger('db', 'connector')
 
 class DatabaseConnector:
     """
@@ -28,6 +32,7 @@ class DatabaseConnector:
         self.config = config or DB_CONFIG
 
     @contextmanager
+    @log_db_function
     def get_connection(self):
         """
         Context manager that yields a database connection.
@@ -73,6 +78,7 @@ class DatabaseConnector:
             finally:
                 cursor.close()
 
+    @log_db_function
     def execute_query(self, query, params=None, fetch=True, cursor_factory=None):
         """
         Execute a SQL query and optionally return results.
@@ -93,6 +99,7 @@ class DatabaseConnector:
                 return cursor.fetchall()
             return None
 
+    @log_db_function
     def execute_many(self, query, params_list):
         """
         Execute a batch SQL operation (many executions of the same query).
@@ -109,6 +116,7 @@ class DatabaseConnector:
             cursor.executemany(query, params_list)
             return cursor.rowcount
 
+    @log_db_function
     def insert_json_data(self, table, json_data, return_id=False):
         """
         Insert JSON data into a table.
