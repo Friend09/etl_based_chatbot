@@ -4,18 +4,16 @@ Provides natural language interface to weather data using OpenAI's GPT model.
 """
 
 import logging
-import json  # noqa: F401 - may be used in future development
+import json
 from openai import OpenAI
-import openai  # Add this import
-from datetime import datetime
+from datetime import datetime, timedelta
 
-from config.settings import OPENAI_API_KEY, OPENAI_MODEL
-from database.db_connector import DatabaseConnector
-import pandas as pd  # noqa: F401 - may be used in future development
-from datetime import datetime, timedelta  # noqa: F401 - may be used in future development
+from config.settings import OPENAI_API_KEY, OPENAI_MODEL, OPENAI_MAX_TOKENS, OPENAI_TEMPERATURE
+from database.db_connector import DatabaseConnector, DatabaseQueryError
+from utils.logger import get_component_logger
 
 # Set up logging
-logger = logging.getLogger(__name__)
+logger = get_component_logger('web', 'chatbot')
 
 # Initialize OpenAI client
 if OPENAI_API_KEY:
@@ -29,137 +27,212 @@ db = DatabaseConnector()
 
 def get_weather_context():
     """
-    Get context information about weather for the chatbot.
-
-    Returns:
-        str: Weather context information
+    Retrieve relevant weather data context to provide to the chatbot.
     """
+    db = DatabaseConnector()
+    context_data = {
+        "current_weather": None,
+        "forecast": [],
+        "stats": None
+    }
+
     try:
-        # Get current weather data
-        current_query = "SELECT * FROM latest_weather"
+        # Get the latest current weather data
+        current_query = """
+        SELECT
+            c.temperature, c.feels_like, c.humidity, c.pressure,
+            c.weather_condition, c.weather_description, c.timestamp,
+            l.city_name, l.country
+        FROM
+            weather_current c
+        JOIN
+            locations l ON c.location_id = l.location_id
+        ORDER BY
+            c.timestamp DESC
+        LIMIT 1
+        """
+
         current_result = db.execute_query(current_query)
+        if current_result:
+            context_data["current_weather"] = current_result[0]
 
-        # Get forecast data
-        forecast_query = "SELECT * FROM weather_forecast ORDER BY forecast_time LIMIT 10"
+        # Get forecast data (next 3 days)
+        forecast_query = """
+        SELECT
+            f.forecast_time, f.temperature, f.humidity,
+            f.weather_condition, f.weather_description,
+            l.city_name, l.country
+        FROM
+            weather_forecast f
+        JOIN
+            locations l ON f.location_id = l.location_id
+        ORDER BY
+            f.forecast_time ASC
+        LIMIT 5
+        """
+
         forecast_result = db.execute_query(forecast_query)
-
-        # Get historical stats
-        historical_query = "SELECT * FROM weather_stats"
-        historical_result = db.execute_query(historical_query)
-
-        if not current_result:
-            logger.warning("No current weather data available")
-            return "Error retrieving weather data."
-
-        # Format current weather
-        current = current_result[0]
-        current_time = current[1]  # Ensure this is a datetime object, not a string
-
-        # Make sure current_time is a datetime object
-        if isinstance(current_time, str):
-            try:
-                current_time = datetime.strptime(current_time, '%Y-%m-%d %H:%M:%S')
-            except ValueError:
-                try:
-                    # Try another common format
-                    current_time = datetime.strptime(current_time, '%Y-%m-%d')
-                except ValueError:
-                    current_time = datetime.now()  # Fallback
-        elif not isinstance(current_time, datetime):
-            current_time = datetime.now()  # Ensure it's a datetime, not some other type
-
-        # Format in the way expected by tests
-        context = f"Current weather in Louisville (as of {current_time.strftime('%Y-%m-%d %H:%M')}): "
-        context += f"Temperature: {current[3]}°C, feels like {current[4]}°C. "
-        context += f"{current[10]} with humidity {current[7]}%, and wind speed {current[5]} m/s.\n\n"
-
-        # Add forecast information with the exact wording expected by tests
         if forecast_result:
-            context += "Upcoming forecast:\n"  # Add this specific phrase for the test
-            for forecast in forecast_result:
-                forecast_time = forecast[2]
-                if isinstance(forecast_time, str):
-                    try:
-                        forecast_time = datetime.strptime(forecast_time, '%Y-%m-%d %H:%M:%S')
-                    except ValueError:
-                        continue
-                context += f"- {forecast_time.strftime('%Y-%m-%d %H:%M')}: {forecast[10]}, {forecast[3]}°C\n"
+            context_data["forecast"] = forecast_result
 
-        return context
+        # Try to get statistics if the table exists
+        try:
+            stats_query = "SELECT * FROM weather_stats"  # Only try this if the table exists
+            stats_result = db.execute_query(stats_query)
+            if stats_result:
+                context_data["stats"] = stats_result[0]
+        except DatabaseQueryError as e:
+            # If the table doesn't exist, log but continue
+            logger.warning(f"Weather stats table not available (this is expected if not set up): {e}")
+            # No re-raising here, we're handling this gracefully
+
+        return context_data
 
     except Exception as e:
         logger.error(f"Error gathering weather context: {e}")
-        return "Error retrieving weather data."
+        return context_data  # Return empty/partial context on error
 
-def process_query(query):
+def format_weather_context(context_data):
     """
-    Process a natural language query about weather data.
+    Format the retrieved weather context into a readable format for the AI.
+    """
+    formatted_context = []
+
+    # Format current weather
+    if context_data["current_weather"]:
+        c = context_data["current_weather"]
+        timestamp = c['timestamp'] if isinstance(c, dict) else c[6]
+        city = c['city_name'] if isinstance(c, dict) else c[7]
+        country = c['country'] if isinstance(c, dict) else c[8]
+        temp = c['temperature'] if isinstance(c, dict) else c[0]
+        feels = c['feels_like'] if isinstance(c, dict) else c[1]
+        condition = c['weather_condition'] if isinstance(c, dict) else c[4]
+
+        formatted_context.append(f"Current weather in {city}, {country} as of {timestamp}:")
+        formatted_context.append(f"Temperature: {temp}°C (feels like {feels}°C)")
+        formatted_context.append(f"Condition: {condition}")
+
+    # Format forecast
+    if context_data["forecast"]:
+        formatted_context.append("\nWeather forecast:")
+        for i, f in enumerate(context_data["forecast"][:3]):  # Limit to 3 forecasts
+            time = f['forecast_time'] if isinstance(f, dict) else f[0]
+            temp = f['temperature'] if isinstance(f, dict) else f[1]
+            condition = f['weather_condition'] if isinstance(f, dict) else f[3]
+
+            day_str = "Today" if i == 0 else "Tomorrow" if i == 1 else f"{time}"
+            formatted_context.append(f"{day_str}: {temp}°C, {condition}")
+
+    return "\n".join(formatted_context)
+
+def process_query(query_text):
+    """
+    Process a natural language query about weather using OpenAI.
 
     Args:
-        query (str): User's natural language query
+        query_text (str): The user's weather-related question
 
     Returns:
-        str: Response from the AI model
+        str: The AI-generated response
     """
+    logger.info(f"Processing query: {query_text}")
+
     try:
-        # Get context information about weather
-        context = get_weather_context()
+        # Get weather context
+        weather_context = get_weather_context()
+        formatted_context = format_weather_context(weather_context)
 
-        # Prepare system message with context and instructions
-        system_message = f"""
-You are a weather assistant for Louisville, Kentucky. Answer questions based on the weather data provided.
-Here's the current weather and forecast information:
+        # Prepare system message with weather context
+        system_message = (
+            "You are a helpful weather assistant for Louisville, Kentucky. "
+            "Answer questions about weather conditions using the data provided. "
+            "If the data doesn't contain the answer, explain what information you'd need. "
+            "Be concise and friendly.\n\n"
+            f"Weather Data:\n{formatted_context}"
+        )
 
-{context}
-
-Respond to the user's question based on this data. If the question cannot be answered using the provided data, politely explain what information is available.
-Keep responses concise and focused on the weather data. Provide specific numbers and data points when available.
-If you're calculating temperature trends or making comparisons, explain your reasoning briefly.
-"""
-
-        # Call OpenAI API with error handling
+        # Try the chat completions API first (more reliable)
         try:
-            # For the test case, we need to handle the case where 'openai.ChatCompletion' is used
-            # This is a compatibility fix for different OpenAI API versions
-            if hasattr(openai, 'ChatCompletion'):
-                # Legacy API
-                response = openai.ChatCompletion.create(
+            logger.info("Using chat.completions API")
+            response = client.chat.completions.create(
+                model=OPENAI_MODEL,
+                messages=[
+                    {"role": "system", "content": system_message},
+                    {"role": "user", "content": query_text}
+                ],
+                max_tokens=OPENAI_MAX_TOKENS,
+                temperature=OPENAI_TEMPERATURE
+            )
+            response_text = response.choices[0].message.content
+            logger.info("Successfully generated AI response")
+            return response_text
+        except Exception as e:
+            logger.warning(f"Chat completions API failed: {str(e)}, trying responses API")
+
+            # Use the OpenAI Responses API (API version 1.66+)
+            try:
+                # Create response using the responses API
+                response = client.responses.create(
                     model=OPENAI_MODEL,
-                    messages=[
+                    input=[
                         {"role": "system", "content": system_message},
-                        {"role": "user", "content": query}
+                        {"role": "user", "content": query_text}
                     ],
-                    max_tokens=1000,
-                    temperature=0.7
+                    temperature=OPENAI_TEMPERATURE,
+                    max_output_tokens=OPENAI_MAX_TOKENS
                 )
-                answer = response.choices[0].message.content.strip()
-            else:
-                # Current API
-                response = client.chat.completions.create(
-                    model=OPENAI_MODEL,
-                    messages=[
-                        {"role": "system", "content": system_message},
-                        {"role": "user", "content": query}
-                    ],
-                    max_tokens=1000,
-                    temperature=0.7
-                )
-                answer = response.choices[0].message.content.strip()
 
-            return answer
+                # Log the response ID for debugging/tracking
+                if hasattr(response, 'id'):
+                    logger.info(f"Created response with ID: {response.id}")
 
-        except (AttributeError, openai.OpenAIError) as e:
-            logger.error(f"OpenAI API error: {e}")
-            # Fallback to non-API method
-            return answer_query_without_api(query)
+                    # Optionally retrieve the response again using the ID
+                    # This demonstrates how to use the retrieval endpoint
+                    try:
+                        retrieved_response = client.responses.retrieve(response.id)
+                        logger.debug(f"Successfully retrieved response with ID: {retrieved_response.id}")
+                    except Exception as retrieve_error:
+                        logger.warning(f"Could not retrieve response: {retrieve_error}")
 
+                # Extract the text content from the response
+                if hasattr(response, 'text'):
+                    if hasattr(response.text, 'value'):
+                        logger.info("Found text.value in response")
+                        return response.text.value
+                    else:
+                        # For API versions where text is the content itself
+                        logger.info("Using response.text directly")
+                        return str(response.text)
+
+                elif hasattr(response, 'content') and response.content:
+                    if isinstance(response.content, list) and len(response.content) > 0:
+                        content = response.content[0]
+                        if hasattr(content, 'text'):
+                            logger.info("Found text in content[0]")
+                            return content.text
+
+                # If we get this far, try to log the full response structure
+                logger.debug(f"Response structure: {str(type(response))}")
+                logger.debug(f"Response attributes: {dir(response)}")
+
+                # Last resort: convert to string
+                logger.warning("Could not extract text from standard attributes, using str()")
+                return str(response)
+
+            except Exception as e2:
+                logger.error(f"Responses API failed: {str(e2)}")
+
+                # Generate a basic response from the weather data without AI
+                if weather_context["current_weather"]:
+                    c = weather_context["current_weather"]
+                    temp = c['temperature'] if isinstance(c, dict) else c[0]
+                    condition = c['weather_condition'] if isinstance(c, dict) else c[4]
+                    return f"I can tell you that the current temperature is {temp}°C and conditions are {condition}. (This is a backup response as our AI service is currently unavailable.)"
+                else:
+                    return "I'm sorry, but I'm having trouble accessing both our weather data and AI services at the moment. Please try again later."
     except Exception as e:
-        logger.error(f"Error processing query with OpenAI: {e}")
-        # Fallback to non-API method as a last resort
-        try:
-            return answer_query_without_api(query)
-        except:
-            return "I'm sorry, I encountered an error processing your request. Please try again later."
+        logger.error(f"Error processing query: {e}")
+        return "I'm sorry, but I encountered a problem processing your question. Please try again later."
 
 def answer_query_without_api(query):
     """

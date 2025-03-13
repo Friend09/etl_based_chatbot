@@ -5,7 +5,9 @@ Utility module providing specialized loggers for different application component
 import os
 import logging
 import sys
+import time  # Add missing import for time module
 from pathlib import Path
+import functools
 from config.logging_config import (
     get_logger,
     set_log_level,
@@ -117,15 +119,21 @@ def log_web_function(func=None, *, logger_name=None):
     return decorator(func)
 
 
-def log_db_function(func=None, *, logger_name=None):
-    """Decorator for logging database function calls."""
-    def decorator(func):
-        logger = LoggerFactory.get_db_logger(logger_name or func.__name__)
-        return log_function_call(logger)(func)
+def log_db_function(func=None):
+    """
+    Decorator for database functions.
+
+    Usage:
+        @log_db_function
+        def my_db_function():
+            pass
+    """
+    logger = get_component_logger('db')
 
     if func is None:
-        return decorator
-    return decorator(func)
+        return lambda f: log_function_call(f, logger=logger)
+
+    return log_function_call(func, logger=logger)
 
 
 # Structured logging support
@@ -186,3 +194,63 @@ def setup_logger(name: str, log_level: int = logging.INFO, log_file: str = None)
         logger.addHandler(file_handler)
 
     return logger
+
+
+def log_function_call(func=None, logger=None):
+    """
+    Decorator to log function calls with timing information.
+
+    Args:
+        func: The function to decorate (when used as @log_function_call)
+        logger: Optional logger to use (when used as @log_function_call(logger=logger))
+
+    Usage:
+        @log_function_call
+        def my_func():
+            pass
+
+        # or with specific logger:
+        @log_function_call(logger=my_logger)
+        def my_func():
+            pass
+    """
+    # If used as @log_function_call
+    if func is not None:
+        # Get logger for the function's module
+        _logger = logger or get_component_logger(func.__module__.split('.')[0])
+
+        @functools.wraps(func)
+        def wrapper(*args, **kwargs):
+            _logger.debug(f"Starting {func.__name__}")
+            start_time = time.time()
+            try:
+                result = func(*args, **kwargs)
+                elapsed = time.time() - start_time
+                _logger.debug(f"Completed {func.__name__} in {elapsed:.2f}s")
+                return result
+            except Exception as e:
+                elapsed = time.time() - start_time
+                _logger.error(f"Error in {func.__name__} after {elapsed:.2f}s: {str(e)}")
+                raise
+        return wrapper
+
+    # If used as @log_function_call(logger=...)
+    else:
+        def decorator(f):
+            _logger = logger or get_component_logger(f.__module__.split('.')[0])
+
+            @functools.wraps(f)
+            def wrapper(*args, **kwargs):
+                _logger.debug(f"Starting {f.__name__}")
+                start_time = time.time()
+                try:
+                    result = f(*args, **kwargs)
+                    elapsed = time.time() - start_time
+                    _logger.debug(f"Completed {f.__name__} in {elapsed:.2f}s")
+                    return result
+                except Exception as e:
+                    elapsed = time.time() - start_time
+                    _logger.error(f"Error in {f.__name__} after {elapsed:.2f}s: {str(e)}")
+                    raise
+            return wrapper
+        return decorator

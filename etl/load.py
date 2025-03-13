@@ -1,3 +1,14 @@
+"""
+ETL Load module responsible for loading processed data into the database.
+
+This module is imported dynamically by the ETL pipeline during the load phase.
+It's not directly imported in static imports but loaded at runtime.
+
+Provides standardized interfaces for inserting and updating data in the database.
+"""
+
+# Note: This file is loaded dynamically in the ETL pipeline and is essential for the application.
+
 from utils.logger import get_component_logger, log_etl_function
 
 # Create a logger for this module

@@ -79,7 +79,7 @@ The project is organized into several main components:
 2. Create and activate a virtual environment:
 
    ```
-   python -m venv venv
+   python3 -m venv venv
    source venv/bin/activate  # On Windows: venv\Scripts\activate
    ```
 
@@ -110,17 +110,168 @@ The project is organized into several main components:
 
 5. Initialize the database:
    ```
-   python -m database.init_db
+   python3 -m database.init_db
    ```
 
 ## Usage
+
+### Available Commands
+
+Here's a comprehensive list of available commands you can use in this framework:
+
+#### Database Commands
+
+```bash
+# Initialize the database with schema
+python3 -m database.init_db
+
+# Test database connectivity and view table contents
+python3 -m tests.test_database
+```
+
+#### ETL Pipeline Commands
+
+```bash
+# Run the complete ETL pipeline (extract, transform, load)
+python3 -m etl.etl_pipeline
+
+# Only collect weather data from API and save to files/database
+python3 -m etl.weather_collector
+
+# Run data extraction operations only
+python3 -m etl.extract
+
+# Run data transformation operations only
+python3 -m etl.transform
+
+# Run data loading operations only
+python3 -m etl.load
+```
+
+#### Running Individual ETL Components
+
+Each ETL component can be run independently for testing or targeted processing:
+
+```bash
+# Extract data from a file with preview
+python3 -m etl.extract data/weather/current_20250313.json --preview
+
+# Expected output:
+# Extracting data from file: data/weather/current_20250313.json
+#
+# Data Preview (Dict):
+#   coord: {'lon': -85.7585, 'lat': 38.2527}
+#   weather: [{'id': 501, 'main': 'Rain', 'description': 'moderate rain', 'icon': '10d'}]
+#   base: stations
+#   main: {'temp': 12.67, 'feels_like': 11.59, 'temp_min': 10.07, 'temp_max': 14.95, 'pressure': 1011, 'humidity': 58}
+#   ... and 9 more items
+# Extraction completed successfully
+
+# Extract data from a URL
+python3 -m etl.extract --url https://api.openweathermap.org/data/2.5/weather?q=Louisville,KY,US&appid=YOUR_API_KEY&units=metric
+
+# Transform data using the transform module
+python3 -m etl.transform data/weather/current_20250313.json --preview
+
+# Load data to the database
+python3 -m etl.load data/weather/current_20250313.json --table weather_current
+
+# Extract and save to a new file
+python3 -m etl.extract data/weather/current_20250313.json -o data/processed/weather_data.json
+```
+
+#### Extract Module Options
+
+The extract module provides several options:
+
+```bash
+# Show help
+python3 -m etl.extract --help
+
+# Extract from file
+python3 -m etl.extract path/to/file.json
+
+# Extract from URL
+python3 -m etl.extract --url https://api.example.com/data
+
+# Extract with preview
+python3 -m etl.extract path/to/file.json --preview
+
+# Extract and save output
+python3 -m etl.extract path/to/file.json --output path/to/output.json
+```
+
+#### Web Application Commands
+
+```bash
+# Start the Flask web application
+python3 -m web.app
+
+# Start the API server only (if implemented separately)
+python3 -m web.api
+```
+
+#### Utility Commands
+
+```bash
+# Check project structure for potential issues
+python3 -m utils.cleanup
+
+# Test the logger configuration
+python3 -m utils.logger_diagnostic
+
+# Check API key availability
+python3 -m utils.check_api_key
+
+# Validate OpenWeatherMap API availability
+python3 -m utils.check_api_availability
+```
+
+#### Testing Commands
+
+```bash
+# Run all tests
+pytest
+
+# Run specific test modules
+pytest tests/test_database.py
+pytest tests/test_weather_collector.py
+pytest tests/test_logging.py
+
+# Run tests with coverage report
+pytest --cov=.
+```
+
+#### Environment Variables
+
+You can customize command behavior with environment variables:
+
+```bash
+# Use a specific city for weather data
+WEATHER_CITY="Miami,FL,US" python3 -m etl.weather_collector
+
+# Specify number of forecast days
+FORECAST_DAYS=7 python3 -m etl.etl_pipeline
+
+# Use a specific OpenWeatherMap API key for a single run
+OPENWEATHERMAP_API_KEY=your_api_key python3 -m etl.weather_collector
+
+# Set log level for a single run
+LOG_LEVEL=DEBUG python3 -m etl.etl_pipeline
+```
 
 ### Running the ETL Pipeline
 
 To manually run the ETL pipeline:
 
 ```
-python -m etl.run_pipeline
+python3 -m etl.run_pipeline
+```
+
+To run the complete ETL pipeline that extracts, transforms, loads, and generates reports:
+
+```
+python3 -m etl.run_pipeline
 ```
 
 ### Starting the Web Application
@@ -128,7 +279,7 @@ python -m etl.run_pipeline
 To start the Flask web application:
 
 ```
-python -m web.app
+python3 -m web.app
 ```
 
 Then navigate to `http://localhost:5000` in your browser.
@@ -147,6 +298,20 @@ Run specific tests with:
 pytest tests/test_weather_collector.py
 pytest tests/test_data_transformer.py
 ```
+
+### Testing Database Connectivity
+
+To verify database connectivity and view available tables:
+
+```bash
+python3 -m tests.test_database
+```
+
+This will:
+
+1. Test the connection to the PostgreSQL database
+2. List the available tables
+3. Show a sample of the data contained in the database
 
 # Logging System Documentation
 
@@ -269,5 +434,110 @@ If logs are not appearing as expected:
 For more help, run the logger diagnostic tool:
 
 ```
-python -m utils.logger_diagnostic
+python3 -m utils.logger_diagnostic
 ```
+
+## Database Setup and Usage
+
+### Database Schema
+
+The application uses a PostgreSQL database with the following main tables:
+
+- `locations`: Stores location data including city name, country, coordinates
+- `weather_current`: Stores current weather measurements linked to locations
+- `weather_forecast`: Stores weather forecast data for locations
+- `weather_report`: Stores daily compiled weather reports
+
+The database uses SQLAlchemy ORM models for data mapping and schema definition.
+
+### Setting Up the Database
+
+To initialize the database:
+
+```bash
+# Create the database in PostgreSQL first
+createdb -U postgres weather_db
+
+# Then run the initialization script
+python3 -m database.init_db
+```
+
+If you encounter any issues, check the log files in the logs/db directory for detailed error messages.
+
+#### Database Schema
+
+The schema setup creates several tables:
+
+- `locations`: Geographic locations for weather data
+- `weather_current`: Current weather observations
+- `weather_forecast`: Future weather predictions
+- `weather_report`: Daily weather summaries and statistics
+
+You can view the complete schema in the `database/schema.sql` file.
+
+### Database Connectivity
+
+The application provides a robust database connection manager with transaction support:
+
+```python
+# Import the connector
+from database.db_connector import DatabaseConnector
+
+# Create a connector instance
+db = DatabaseConnector()
+
+# Execute a query with automatic connection management
+results = db.execute_query(
+    "SELECT * FROM locations WHERE city_name = %s",
+    ("Louisville",)
+)
+
+# Use a transaction for multiple operations
+with db.transaction() as cursor:
+    cursor.execute("INSERT INTO locations (city_name, country) VALUES (%s, %s)",
+                  ('Louisville', 'US'))
+    location_id = cursor.fetchone()['id']
+
+    # Second operation in same transaction
+    cursor.execute(
+        "INSERT INTO weather_current (location_id, temperature) VALUES (%s, %s)",
+        (location_id, 72.5)
+    )
+```
+
+### Error Handling
+
+The connector provides specialized error handling for database operations:
+
+```python
+from database.db_connector import DatabaseConnectionError, DatabaseQueryError
+
+try:
+    results = db.execute_query("SELECT * FROM invalid_table")
+except DatabaseQueryError as e:
+    logger.error("Query error: %s", e)
+except DatabaseConnectionError as e:
+    logger.error("Connection error: %s", e)
+```
+
+The database connector automatically implements:
+
+- Connection pooling for performance
+- Retry logic for transient failures
+- Parameter sanitization for security
+- Structured logging of database operations
+- Transaction management with context managers
+
+## Troubleshooting
+
+### Missing weather_stats Table
+
+If you see errors about the missing `weather_stats` table when running the web application, you need to create this table:
+
+```bash
+python3 -m database.create_weather_stats
+```
+
+### OpenAI API Version
+
+The chatbot uses the OpenAI API. If you see errors like this:

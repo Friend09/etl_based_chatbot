@@ -16,6 +16,8 @@ if str(project_root) not in sys.path:
 
 from utils.logger import get_component_logger, log_etl_function, log_structured
 from utils.location_validator import validate_city_format
+from config.settings import OPENWEATHERMAP_API_KEY, CONFIG_DIR
+from database.db_utils import save_current_weather, save_forecast_data
 
 # Get component-specific logger
 logger = get_component_logger('etl', 'weather_collector')
@@ -35,7 +37,10 @@ class WeatherCollector:
     for Louisville, KY.
     """
 
-    def __init__(self, lat=38.2527, lon=-85.7585, city="Louisville"):
+    BASE_URL = "https://api.openweathermap.org/data/2.5"
+    API_KEY = OPENWEATHERMAP_API_KEY
+
+    def __init__(self, lat=38.2527, lon=-85.7585, city="Louisville", api_key=None):
         """
         Initialize the WeatherCollector with API configuration.
 
@@ -43,10 +48,13 @@ class WeatherCollector:
             lat (float): Latitude for the location (default: Louisville, KY)
             lon (float): Longitude for the location (default: Louisville, KY)
             city (str): City name (default: Louisville)
+            api_key (str, optional): OpenWeatherMap API key. If not provided,
+                                    it will use the key from environment variable.
         """
-        self.api_key = os.environ.get('OPENWEATHERMAP_API_KEY')
+        self.api_key = api_key or self.API_KEY
+
         if not self.api_key:
-            raise ValueError("OPENWEATHERMAP_API_KEY environment variable is required")
+            self._handle_missing_api_key()
 
         self.lat = lat
         self.lon = lon
@@ -54,6 +62,38 @@ class WeatherCollector:
         self.base_url = "https://api.openweathermap.org/data/2.5"
         self.current_weather_url = f"{self.base_url}/weather"
         self.forecast_url = f"{self.base_url}/forecast"
+
+    def _handle_missing_api_key(self):
+        """Handle missing API key with helpful error message."""
+        example_file_path = os.path.join(CONFIG_DIR, '.env.example')
+        env_file_path = os.path.join(project_root, '.env')
+
+        error_message = (
+            "OpenWeatherMap API key not found. Please set OPENWEATHERMAP_API_KEY environment variable.\n"
+            "You can obtain an API key from: https://openweathermap.org/api\n\n"
+            "To fix this issue:\n"
+            "1. Create or edit the .env file in the project root\n"
+            f"2. Add the line: OPENWEATHERMAP_API_KEY=your_api_key_here\n"
+            "3. Restart the application\n"
+        )
+
+        # Create .env.example file if it doesn't exist
+        if not os.path.exists(example_file_path):
+            os.makedirs(CONFIG_DIR, exist_ok=True)
+            with open(example_file_path, 'w') as f:
+                f.write("# OpenWeatherMap API key\n")
+                f.write("OPENWEATHERMAP_API_KEY=your_api_key_here\n\n")
+                f.write("# Database Configuration\n")
+                f.write("DB_HOST=localhost\n")
+                f.write("DB_PORT=5432\n")
+                f.write("DB_NAME=weather_db\n")
+                f.write("DB_USER=postgres\n")
+                f.write("DB_PASSWORD=your_password\n")
+
+        logger.error("OpenWeatherMap API key not found. Please set OPENWEATHERMAP_API_KEY environment variable.")
+        print(error_message, file=sys.stderr)
+
+        # Don't exit here, let the caller decide what to do
 
     def fetch_current_weather(self):
         """
@@ -671,15 +711,29 @@ def main():
         # Get current weather
         current_weather = get_current_weather(city)
 
-        # Save current weather data
+        # Save current weather data to file
         save_weather_data(current_weather, filename=f"current_{datetime.now().strftime('%Y%m%d')}.json")
+
+        # Save current weather to database
+        try:
+            weather_id = save_current_weather(current_weather)
+            logger.info(f"Current weather data saved to database with ID: {weather_id}")
+        except Exception as e:
+            logger.error(f"Failed to save current weather to database: {str(e)}")
 
         try:
             # Get forecast data (up to 8 days with OneCall API 3.0)
             forecast_data = get_forecast(city, days=8)
 
-            # Save forecast data
+            # Save forecast data to file
             save_weather_data(forecast_data, filename=f"forecast_{datetime.now().strftime('%Y%m%d')}.json")
+
+            # Save forecast data to database
+            try:
+                forecast_ids = save_forecast_data(forecast_data)
+                logger.info(f"Forecast data saved to database: {len(forecast_ids)} entries")
+            except Exception as e:
+                logger.error(f"Failed to save forecast data to database: {str(e)}")
 
         except APIError as e:
             logger.warning(f"Could not retrieve forecast data: {str(e)}")

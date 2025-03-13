@@ -1,3 +1,14 @@
+"""
+ETL Transform module responsible for transforming and processing extracted data.
+
+This module is imported dynamically by the ETL pipeline during the transform phase.
+It's not directly imported in static imports but loaded at runtime.
+
+Provides functions for data cleaning, normalization, and enrichment.
+"""
+
+# Note: This file is loaded dynamically in the ETL pipeline and is essential for the application.
+
 from utils.logger import get_component_logger, log_etl_function
 
 # Create a logger for this module
