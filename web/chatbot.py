@@ -4,21 +4,20 @@ Provides natural language interface to weather data using OpenAI's GPT model.
 """
 
 import logging
-import json
+import json  # noqa: F401 - may be used in future development
 from openai import OpenAI
-
-client = OpenAI(api_key=OPENAI_API_KEY)
-import pandas as pd
-from datetime import datetime, timedelta
 
 from config.settings import OPENAI_API_KEY, OPENAI_MODEL
 from database.db_connector import DatabaseConnector
+import pandas as pd  # noqa: F401 - may be used in future development
+from datetime import datetime, timedelta  # noqa: F401 - may be used in future development
 
 # Set up logging
 logger = logging.getLogger(__name__)
 
 # Initialize OpenAI client
 if OPENAI_API_KEY:
+    client = OpenAI(api_key=OPENAI_API_KEY)
 else:
     logger.error("OpenAI API key not found in environment variables.")
     raise ValueError("API key not found. Please set OPENAI_API_KEY in .env file.")
