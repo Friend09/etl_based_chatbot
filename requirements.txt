@@ -1,3 +1,29 @@
+# Web Development / APIs
+Flask
+Werkzeug
+Jinja2
+requests
+
+# Data Processing / Analysis
+pandas
+matplotlib
+plotly
+SQLAlchemy
+psycopg2-binary
+
+# Machine Learning / AI
+openai
+
+# Development / Testing
+pytest
+pytest-cov
 ipykernel
 nbformat
+pre-commit
+
+# Workflow / Scheduling
+apache-airflow
+APScheduler
+
+# Utilities / Configuration
 python-dotenv

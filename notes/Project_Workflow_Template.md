@@ -11,7 +11,7 @@ A structured approach to leveraging Large Language Models (LLMs) for efficient s
     - [Step 2: Planning](#step-2-planning)
     - [Step 3: Execution](#step-3-execution)
       - [Option 1: Using Claude](#option-1-using-claude)
-      - [Option 2: Using Aider](#option-2-using-aider)
+      - [Option 2: Using Aider/GitHub Copilot](#option-2-using-aidergithub-copilot)
   - [Non-Greenfield Projects Workflow](#non-greenfield-projects-workflow)
     - [Step 1: Get Context](#step-1-get-context)
     - [Step 2: Generate Improvements](#step-2-generate-improvements)
@@ -91,14 +91,14 @@ Choose a tool for implementation:
 #### Option 1: Using Claude
 
 1. Set up the repo (boilerplate, uv init, cargo init, etc.)
-2. Paste each prompt into Claude
+2. Paste each prompt from `prompt_plan.md` into Claude
 3. Copy and paste code from Claude into your IDE
 4. Run code and tests to verify
 5. If it works, move to the next prompt
 6. If it doesn't work, use repomix to pass the codebase to Claude for debugging
 7. Repeat until complete
 
-#### Option 2: Using Aider
+#### Option 2: Using Aider/GitHub Copilot
 
 1. Set up the repo (boilerplate, uv init, cargo init, etc.)
 2. Start aider
