@@ -72,7 +72,25 @@ def register_routes(app):
         try:
             # Query the latest weather from the database
             query = """
-                SELECT * FROM latest_weather
+                SELECT
+                    weather_id as id,
+                    timestamp,
+                    l.city_name as city,
+                    temperature,
+                    feels_like,
+                    humidity,
+                    pressure,
+                    wind_speed,
+                    wind_direction,
+                    weather_condition as weather_main,
+                    weather_description,
+                    clouds_percentage as clouds,
+                    visibility,
+                    raw_data
+                FROM weather_current w
+                JOIN locations l ON w.location_id = l.location_id
+                ORDER BY timestamp DESC
+                LIMIT 1
             """
 
             result = db.execute_query(query, cursor_factory=None)
@@ -85,8 +103,7 @@ def register_routes(app):
             # Convert result to dictionary
             columns = ['id', 'timestamp', 'city', 'temperature', 'feels_like', 'humidity',
                       'pressure', 'wind_speed', 'wind_direction', 'weather_main',
-                      'weather_description', 'clouds', 'visibility', 'rain_1h',
-                      'snow_1h', 'raw_data']
+                      'weather_description', 'clouds', 'visibility', 'raw_data']
 
             weather_data = dict(zip(columns, result[0]))
 
@@ -116,11 +133,29 @@ def register_routes(app):
         try:
             # Query the latest forecast from the database
             query = """
-                SELECT * FROM weather_forecasts
-                WHERE collection_timestamp = (
-                    SELECT MAX(collection_timestamp) FROM weather_forecasts
+                SELECT
+                    forecast_id as id,
+                    prediction_time as collection_timestamp,
+                    forecast_time as forecast_timestamp,
+                    l.city_name as city,
+                    temperature,
+                    feels_like,
+                    humidity,
+                    pressure,
+                    wind_speed,
+                    wind_direction,
+                    weather_condition as weather_main,
+                    weather_description,
+                    clouds_percentage as clouds,
+                    visibility,
+                    precipitation_probability as pop,
+                    raw_data
+                FROM weather_forecast f
+                JOIN locations l ON f.location_id = l.location_id
+                WHERE prediction_time = (
+                    SELECT MAX(prediction_time) FROM weather_forecast
                 )
-                ORDER BY forecast_timestamp ASC
+                ORDER BY forecast_time ASC
             """
 
             result = db.execute_query(query, cursor_factory=None)
@@ -135,7 +170,7 @@ def register_routes(app):
                       'temperature', 'feels_like', 'humidity', 'pressure',
                       'wind_speed', 'wind_direction', 'weather_main',
                       'weather_description', 'clouds', 'visibility', 'pop',
-                      'rain_3h', 'snow_3h', 'raw_data']
+                      'raw_data']
 
             forecast_data = []
             for row in result:

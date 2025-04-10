@@ -1,4 +1,4 @@
-.PHONY: setup clean clean-logs run run-debug run-info run-warning run-error test install help setup-logging migrate-loggers test-logging example-logging setup-logging-full
+.PHONY: setup clean clean-logs run run-debug run-info run-warning run-error test install help setup-logging migrate-loggers test-logging example-logging setup-logging-full install run test clean lint format init-db sample-data
 
 # Configuration
 PYTHON = python3
@@ -147,3 +147,16 @@ example-logging:
 # Combined target for full logging setup
 setup-logging-full: setup-logging migrate-loggers test-logging example-logging
 	@echo "Logging system fully set up and tested"
+
+# New targets from the code block
+lint:
+	ruff check .
+
+format:
+	ruff format .
+
+init-db:
+	python database/init_db.py
+
+sample-data:
+	python database/sample_data.py

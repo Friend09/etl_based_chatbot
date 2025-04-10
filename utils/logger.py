@@ -100,8 +100,21 @@ def get_component_logger(component_type, name=None):
 def log_etl_function(func=None, *, logger_name=None):
     """Decorator for logging ETL function calls."""
     def decorator(func):
-        logger = LoggerFactory.get_etl_logger(logger_name or func.__name__)
-        return log_function_call(logger)(func)
+        logger = LoggerFactory.get_etl_logger(logger_name or func.__module__)
+        @functools.wraps(func)
+        def wrapper(*args, **kwargs):
+            logger.debug(f"Starting {func.__name__}")
+            start_time = time.time()
+            try:
+                result = func(*args, **kwargs)
+                elapsed = time.time() - start_time
+                logger.debug(f"Completed {func.__name__} in {elapsed:.2f}s")
+                return result
+            except Exception as e:
+                elapsed = time.time() - start_time
+                logger.error(f"Error in {func.__name__} after {elapsed:.2f}s: {str(e)}")
+                raise
+        return wrapper
 
     if func is None:
         return decorator
@@ -214,43 +227,24 @@ def log_function_call(func=None, logger=None):
         def my_func():
             pass
     """
-    # If used as @log_function_call
-    if func is not None:
-        # Get logger for the function's module
-        _logger = logger or get_component_logger(func.__module__.split('.')[0])
+    def decorator(f):
+        _logger = logger or get_component_logger(f.__module__.split('.')[0])
 
-        @functools.wraps(func)
+        @functools.wraps(f)
         def wrapper(*args, **kwargs):
-            _logger.debug(f"Starting {func.__name__}")
+            _logger.debug(f"Starting {f.__name__}")
             start_time = time.time()
             try:
-                result = func(*args, **kwargs)
+                result = f(*args, **kwargs)
                 elapsed = time.time() - start_time
-                _logger.debug(f"Completed {func.__name__} in {elapsed:.2f}s")
+                _logger.debug(f"Completed {f.__name__} in {elapsed:.2f}s")
                 return result
             except Exception as e:
                 elapsed = time.time() - start_time
-                _logger.error(f"Error in {func.__name__} after {elapsed:.2f}s: {str(e)}")
+                _logger.error(f"Error in {f.__name__} after {elapsed:.2f}s: {str(e)}")
                 raise
         return wrapper
 
-    # If used as @log_function_call(logger=...)
-    else:
-        def decorator(f):
-            _logger = logger or get_component_logger(f.__module__.split('.')[0])
-
-            @functools.wraps(f)
-            def wrapper(*args, **kwargs):
-                _logger.debug(f"Starting {f.__name__}")
-                start_time = time.time()
-                try:
-                    result = f(*args, **kwargs)
-                    elapsed = time.time() - start_time
-                    _logger.debug(f"Completed {f.__name__} in {elapsed:.2f}s")
-                    return result
-                except Exception as e:
-                    elapsed = time.time() - start_time
-                    _logger.error(f"Error in {f.__name__} after {elapsed:.2f}s: {str(e)}")
-                    raise
-            return wrapper
+    if func is None:
         return decorator
+    return decorator(func)

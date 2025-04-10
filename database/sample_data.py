@@ -15,7 +15,7 @@ import json
 parent_dir = Path(__file__).parent.parent
 sys.path.append(str(parent_dir))
 
-from database.db_utils import upsert_location, upsert_weather_data, DatabaseError
+from database.db_utils import get_or_create_location, save_current_weather, DatabaseError
 from utils.logger import setup_logger
 
 # Set up logging
@@ -135,20 +135,33 @@ def generate_sample_weather(location_id, timestamp):
     }
 
     return {
-        'location_id': location_id,
-        'timestamp': timestamp,
-        'temperature': temperature,
-        'feels_like': feels_like,
-        'humidity': humidity,
-        'pressure': pressure,
-        'wind_speed': wind_speed,
-        'wind_direction': wind_direction,
-        'weather_condition': weather['condition'],
-        'weather_description': weather['description'],
-        'precipitation': precipitation,
+        'name': 'Louisville,KY,US',  # Add this for save_current_weather
+        'coord': {
+            'lat': 38.2527,
+            'lon': -85.7585
+        },
+        'timezone': 'America/Kentucky/Louisville',
+        'weather': [
+            {
+                'main': weather['condition'],
+                'description': weather['description']
+            }
+        ],
+        'main': {
+            'temp': temperature,
+            'feels_like': feels_like,
+            'humidity': humidity,
+            'pressure': pressure
+        },
+        'wind': {
+            'speed': wind_speed,
+            'deg': wind_direction
+        },
+        'clouds': {
+            'all': clouds_percentage
+        },
         'visibility': visibility,
-        'clouds_percentage': clouds_percentage,
-        'raw_data': json.dumps(raw_data)
+        'dt': int(timestamp.timestamp())
     }
 
 def generate_sample_data(days=30, interval_hours=3):
@@ -168,7 +181,14 @@ def generate_sample_data(days=30, interval_hours=3):
         location_ids = []
         for location in SAMPLE_LOCATIONS:
             logger.info(f"Adding location: {location['city_name']}, {location['country']}")
-            location_id = upsert_location(location)
+            location_id = get_or_create_location(
+                location['city_name'],
+                location['country'],
+                location['latitude'],
+                location['longitude'],
+                location['timezone'],
+                location['population']
+            )
             location_ids.append(location_id)
 
         # Generate historical weather data
@@ -181,7 +201,7 @@ def generate_sample_data(days=30, interval_hours=3):
         while current_time <= end_time:
             for location_id in location_ids:
                 weather_data = generate_sample_weather(location_id, current_time)
-                upsert_weather_data(weather_data)
+                save_current_weather(weather_data)
                 weather_count += 1
 
             current_time += timedelta(hours=interval_hours)

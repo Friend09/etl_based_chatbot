@@ -1,0 +1,186 @@
+{
+  "lat": 38.2542,
+  "lon": -85.7594,
+  "timezone": -14400,
+  "timezone_offset": -14400,
+  "city": "Louisville",
+  "country": "US",
+  "daily": [
+    {
+      "dt": 1744243200,
+      "sunrise": null,
+      "sunset": null,
+      "temp": {
+        "day": 15.36,
+        "min": 11.16,
+        "max": 15.36
+      },
+      "feels_like": {
+        "day": 13.92
+      },
+      "pressure": 1017,
+      "humidity": 37,
+      "weather": [
+        {
+          "id": 800,
+          "main": "Clear",
+          "description": "clear sky",
+          "icon": "01d"
+        }
+      ],
+      "wind_speed": 2.39,
+      "wind_deg": 172,
+      "clouds": 0,
+      "pop": 0,
+      "rain": 0,
+      "date": "2025-04-09"
+    },
+    {
+      "dt": 1744264800,
+      "sunrise": null,
+      "sunset": null,
+      "temp": {
+        "day": 13.31,
+        "min": 10.6,
+        "max": 17.83
+      },
+      "feels_like": {
+        "day": 12.58
+      },
+      "pressure": 1016,
+      "humidity": 72,
+      "weather": [
+        {
+          "id": 500,
+          "main": "Rain",
+          "description": "light rain",
+          "icon": "10n"
+        }
+      ],
+      "wind_speed": 6.46,
+      "wind_deg": 199,
+      "clouds": 67,
+      "pop": 1,
+      "rain": 7.23,
+      "date": "2025-04-10"
+    },
+    {
+      "dt": 1744351200,
+      "sunrise": null,
+      "sunset": null,
+      "temp": {
+        "day": 9.95,
+        "min": 6.33,
+        "max": 9.95
+      },
+      "feels_like": {
+        "day": 9.95
+      },
+      "pressure": 1015,
+      "humidity": 96,
+      "weather": [
+        {
+          "id": 500,
+          "main": "Rain",
+          "description": "light rain",
+          "icon": "10n"
+        }
+      ],
+      "wind_speed": 0.88,
+      "wind_deg": 271,
+      "clouds": 100,
+      "pop": 1,
+      "rain": 2.4800000000000004,
+      "date": "2025-04-11"
+    },
+    {
+      "dt": 1744437600,
+      "sunrise": null,
+      "sunset": null,
+      "temp": {
+        "day": 3.92,
+        "min": 2.37,
+        "max": 12.97
+      },
+      "feels_like": {
+        "day": 1.53
+      },
+      "pressure": 1021,
+      "humidity": 79,
+      "weather": [
+        {
+          "id": 803,
+          "main": "Clouds",
+          "description": "broken clouds",
+          "icon": "04n"
+        }
+      ],
+      "wind_speed": 2.6,
+      "wind_deg": 337,
+      "clouds": 69,
+      "pop": 0,
+      "rain": 0,
+      "date": "2025-04-12"
+    },
+    {
+      "dt": 1744524000,
+      "sunrise": null,
+      "sunset": null,
+      "temp": {
+        "day": 5.6,
+        "min": 4.77,
+        "max": 16.26
+      },
+      "feels_like": {
+        "day": 5.6
+      },
+      "pressure": 1020,
+      "humidity": 72,
+      "weather": [
+        {
+          "id": 802,
+          "main": "Clouds",
+          "description": "scattered clouds",
+          "icon": "03n"
+        }
+      ],
+      "wind_speed": 0.58,
+      "wind_deg": 67,
+      "clouds": 42,
+      "pop": 0,
+      "rain": 0,
+      "date": "2025-04-13"
+    },
+    {
+      "dt": 1744610400,
+      "sunrise": null,
+      "sunset": null,
+      "temp": {
+        "day": 12.22,
+        "min": 11.94,
+        "max": 20.51
+      },
+      "feels_like": {
+        "day": 11.48
+      },
+      "pressure": 1012,
+      "humidity": 76,
+      "weather": [
+        {
+          "id": 804,
+          "main": "Clouds",
+          "description": "overcast clouds",
+          "icon": "04n"
+        }
+      ],
+      "wind_speed": 3.73,
+      "wind_deg": 185,
+      "clouds": 100,
+      "pop": 0,
+      "rain": 0,
+      "date": "2025-04-14"
+    }
+  ],
+  "api_type": "5day_forecast",
+  "api_source": "forecast_5day"
+}

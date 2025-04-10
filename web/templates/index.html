@@ -3,321 +3,95 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Louisville Weather Data & Chatbot</title>
-    <!-- Bootstrap CSS -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <!-- Custom CSS -->
-    <style>
-        .hero {
-            background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)), url('https://images.unsplash.com/photo-1534088568595-a066f410bcda?ixlib=rb-1.2.1&auto=format&fit=crop&w=1920&q=80');
-            background-size: cover;
-            background-position: center;
-            color: white;
-            padding: 60px 0;
-            margin-bottom: 30px;
-        }
-        .weather-card {
-            transition: transform 0.3s;
-            margin-bottom: 20px;
-            height: 100%;
-        }
-        .weather-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 10px 20px rgba(0,0,0,0.1);
-        }
-        .chart-container {
-            height: 300px;
-            margin-bottom: 30px;
-        }
-        footer {
-            background-color: #f8f9fa;
-            padding: 20px 0;
-            margin-top: 40px;
-        }
-    </style>
+    <title>Weather ETL Chatbot</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
 </head>
 <body>
-    <!-- Navigation -->
-    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
-        <div class="container">
-            <a class="navbar-brand" href="/">Louisville Weather ETL & Chatbot</a>
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
-                <span class="navbar-toggler-icon"></span>
-            </button>
-            <div class="collapse navbar-collapse" id="navbarNav">
-                <ul class="navbar-nav ms-auto">
-                    <li class="nav-item">
-                        <a class="nav-link active" href="/">Home</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="/chat">Chatbot</a>
-                    </li>
-                </ul>
+    <div class="container mt-5">
+        <h1>Weather ETL Chatbot</h1>
+        <div class="row mt-4">
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header">
+                        Current Weather
+                    </div>
+                    <div class="card-body" id="current-weather">
+                        Loading...
+                    </div>
+                </div>
             </div>
-        </div>
-    </nav>
-
-    <!-- Hero Section -->
-    <div class="hero text-center">
-        <div class="container">
-            <h1>Louisville Weather Data</h1>
-            <p class="lead">Real-time weather information and intelligent chatbot assistant</p>
-            <a href="/chat" class="btn btn-primary btn-lg">Ask About Weather</a>
-        </div>
-    </div>
-
-    <!-- Current Weather Section -->
-    <div class="container">
-        <h2 class="text-center mb-4">Current Weather</h2>
-        <div class="row" id="current-weather-container">
-            <div class="col-12 text-center">
-                <div class="spinner-border" role="status">
-                    <span class="visually-hidden">Loading...</span>
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header">
+                        Chat with Weather Bot
+                    </div>
+                    <div class="card-body">
+                        <div id="chat-messages" class="mb-3" style="height: 300px; overflow-y: auto;">
+                        </div>
+                        <div class="input-group">
+                            <input type="text" id="user-input" class="form-control" placeholder="Ask about the weather...">
+                            <button class="btn btn-primary" onclick="sendMessage()">Send</button>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
-
-    <!-- Forecast Section -->
-    <div class="container mt-5">
-        <h2 class="text-center mb-4">Weather Forecast</h2>
-        <div class="row" id="forecast-container">
-            <div class="col-12 text-center">
-                <div class="spinner-border" role="status">
-                    <span class="visually-hidden">Loading...</span>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Temperature Chart -->
-    <div class="container mt-5">
-        <h2 class="text-center mb-4">Temperature Forecast</h2>
-        <div class="chart-container">
-            <canvas id="temperatureChart"></canvas>
-        </div>
-    </div>
-
-    <!-- Statistics Section -->
-    <div class="container mt-5">
-        <h2 class="text-center mb-4">Weather Statistics</h2>
-        <div class="row" id="stats-container">
-            <div class="col-12 text-center">
-                <div class="spinner-border" role="status">
-                    <span class="visually-hidden">Loading...</span>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Footer -->
-    <footer>
-        <div class="container text-center">
-            <p>Weather ETL Chatbot &copy; 2025 | Data from OpenWeatherMap API</p>
-        </div>
-    </footer>
-
-    <!-- Bootstrap and JS -->
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-        // Function to format date
-        function formatDate(dateString) {
-            const date = new Date(dateString);
-            return date.toLocaleString();
+        // Fetch current weather
+        async function fetchCurrentWeather() {
+            try {
+                const response = await fetch('/api/weather/current');
+                const data = await response.json();
+                document.getElementById('current-weather').innerHTML = `
+                    <p>Temperature: ${data.temperature}°C</p>
+                    <p>Feels like: ${data.feels_like}°C</p>
+                    <p>Humidity: ${data.humidity}%</p>
+                    <p>Weather: ${data.weather_description}</p>
+                `;
+            } catch (error) {
+                document.getElementById('current-weather').innerHTML = 'Error loading weather data';
+            }
         }
 
-        // Function to get weather icon based on condition
-        function getWeatherIcon(condition) {
-            const icons = {
-                'Clear': '☀️',
-                'Clouds': '☁️',
-                'Rain': '🌧️',
-                'Drizzle': '🌦️',
-                'Thunderstorm': '⛈️',
-                'Snow': '❄️',
-                'Mist': '🌫️',
-                'Fog': '🌫️',
-                'Haze': '🌫️'
-            };
-            return icons[condition] || '🌡️';
-        }
+        // Send message to chatbot
+        async function sendMessage() {
+            const input = document.getElementById('user-input');
+            const message = input.value.trim();
+            if (!message) return;
 
-        // Fetch current weather data
-        fetch('/api/weather/current')
-            .then(response => response.json())
-            .then(data => {
-                const container = document.getElementById('current-weather-container');
+            // Add user message to chat
+            addMessage('You', message);
+            input.value = '';
 
-                if (data.error) {
-                    container.innerHTML = `<div class="col-12 text-center"><p class="text-danger">${data.error}</p></div>`;
-                    return;
-                }
-
-                container.innerHTML = `
-                    <div class="col-md-6 mx-auto">
-                        <div class="card weather-card shadow">
-                            <div class="card-body text-center">
-                                <h3>${data.city} ${getWeatherIcon(data.weather_main)}</h3>
-                                <h2 class="display-4">${data.temperature.toFixed(1)}°C</h2>
-                                <p class="lead">${data.weather_description}</p>
-                                <p>Feels like: ${data.feels_like.toFixed(1)}°C</p>
-                                <div class="row mt-3">
-                                    <div class="col-4">
-                                        <p><strong>Humidity</strong><br>${data.humidity}%</p>
-                                    </div>
-                                    <div class="col-4">
-                                        <p><strong>Wind</strong><br>${data.wind_speed} m/s</p>
-                                    </div>
-                                    <div class="col-4">
-                                        <p><strong>Pressure</strong><br>${data.pressure} hPa</p>
-                                    </div>
-                                </div>
-                                <p class="text-muted mt-3">Last updated: ${formatDate(data.timestamp)}</p>
-                            </div>
-                        </div>
-                    </div>
-                `;
-            })
-            .catch(error => {
-                console.error('Error fetching current weather:', error);
-                document.getElementById('current-weather-container').innerHTML = `
-                    <div class="col-12 text-center">
-                        <p class="text-danger">Error loading current weather data. Please try again later.</p>
-                    </div>
-                `;
-            });
-
-        // Fetch forecast data
-        fetch('/api/weather/forecast')
-            .then(response => response.json())
-            .then(data => {
-                const container = document.getElementById('forecast-container');
-
-                if (data.error) {
-                    container.innerHTML = `<div class="col-12 text-center"><p class="text-danger">${data.error}</p></div>`;
-                    return;
-                }
-
-                // Only display next 8 forecasts
-                const forecasts = data.slice(0, 8);
-
-                let forecastHTML = '';
-                forecasts.forEach(forecast => {
-                    const forecastTime = new Date(forecast.forecast_timestamp);
-                    forecastHTML += `
-                        <div class="col-md-3 col-sm-6">
-                            <div class="card weather-card shadow">
-                                <div class="card-body text-center">
-                                    <h5>${forecastTime.toLocaleDateString()} ${forecastTime.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</h5>
-                                    <h3>${forecast.temperature.toFixed(1)}°C ${getWeatherIcon(forecast.weather_main)}</h3>
-                                    <p>${forecast.weather_description}</p>
-                                    <p><strong>Humidity:</strong> ${forecast.humidity}%</p>
-                                    <p><strong>Wind:</strong> ${forecast.wind_speed} m/s</p>
-                                    <p><strong>Precipitation:</strong> ${forecast.pop ? (forecast.pop * 100).toFixed(0) : 0}%</p>
-                                </div>
-                            </div>
-                        </div>
-                    `;
+            try {
+                const response = await fetch('/api/chat', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ message }),
                 });
+                const data = await response.json();
+                addMessage('Bot', data.response);
+            } catch (error) {
+                addMessage('Bot', 'Sorry, I encountered an error processing your request.');
+            }
+        }
 
-                container.innerHTML = forecastHTML;
+        // Add message to chat
+        function addMessage(sender, message) {
+            const chatMessages = document.getElementById('chat-messages');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = 'mb-2';
+            messageDiv.innerHTML = `<strong>${sender}:</strong> ${message}`;
+            chatMessages.appendChild(messageDiv);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
 
-                // Create temperature chart
-                createTemperatureChart(forecasts);
-            })
-            .catch(error => {
-                console.error('Error fetching forecast:', error);
-                document.getElementById('forecast-container').innerHTML = `
-                    <div class="col-12 text-center">
-                        <p class="text-danger">Error loading forecast data. Please try again later.</p>
-                    </div>
-                `;
-            });
-
-        // Fetch statistics data
-        fetch('/api/weather/stats')
-            .then(response => response.json())
-            .then(data => {
-                const container = document.getElementById('stats-container');
-
-                if (data.error) {
-                    container.innerHTML = `<div class="col-12 text-center"><p class="text-danger">${data.error}</p></div>`;
-                    return;
-                }
-
-                container.innerHTML = `
-                    <div class="col-md-3 col-sm-6">
-                        <div class="card weather-card shadow">
-                            <div class="card-body text-center">
-                                <h5>Average Temperature</h5>
-                                <h3>${data.avg_temp ? data.avg_temp.toFixed(1) : 'N/A'}°C</h3>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-md-3 col-sm-6">
-                        <div class="card weather-card shadow">
-                            <div class="card-body text-center">
-                                <h5>Temperature Range</h5>
-                                <h3>${data.min_temp ? data.min_temp.toFixed(1) : 'N/A'}°C - ${data.max_temp ? data.max_temp.toFixed(1) : 'N/A'}°C</h3>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-md-3 col-sm-6">
-                        <div class="card weather-card shadow">
-                            <div class="card-body text-center">
-                                <h5>Average Humidity</h5>
-                                <h3>${data.avg_humidity ? data.avg_humidity.toFixed(1) : 'N/A'}%</h3>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-md-3 col-sm-6">
-                        <div class="card weather-card shadow">
-                            <div class="card-body text-center">
-                                <h5>Average Wind Speed</h5>
-                                <h3>${data.avg_wind_speed ? data.avg_wind_speed.toFixed(1) : 'N/A'} m/s</h3>
-                            </div>
-                        </div>
-                    </div>
-                `;
-            })
-            .catch(error => {
-                console.error('Error fetching statistics:', error);
-                document.getElementById('stats-container').innerHTML = `
-                    <div class="col-12 text-center">
-                        <p class="text-danger">Error loading weather statistics. Please try again later.</p>
-                    </div>
-                `;
-            });
-
-        // Function to create temperature chart
-        function createTemperatureChart(forecasts) {
-            const ctx = document.getElementById('temperatureChart').getContext('2d');
-
-            const labels = forecasts.map(forecast => {
-                const date = new Date(forecast.forecast_timestamp);
-                return `${date.toLocaleDateString()} ${date.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}`;
-            });
-
-            const temperatures = forecasts.map(forecast => forecast.temperature);
-            const feelsLike = forecasts.map(forecast => forecast.feels_like);
-
-            new Chart(ctx, {
-                type: 'line',
-                data: {
-                    labels: labels,
-                    datasets: [
-                        {
-                            label: 'Temperature (°C)',
-                            data: temperatures,
-                            borderColor: 'rgba(255, 99, 132, 1)',
-                            backgroundColor: 'rgba(255, 99, 132, 0.2)',
-                            tension: 0.1
-                        },
-                        {
-                            label: 'Feels Like (°C)',
-                            data: feelsLike,
-                            borderColor: 'rgba(54, 162, 235, 1)',
-                            backgroundColor: 'rgba(54, 162, 235, 0.2)',
-                            tension: 0.1
-                        }
+        // Load initial data
+        fetchCurrentWeather();
+    </script>
+</body>
+</html>

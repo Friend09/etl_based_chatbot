@@ -1,0 +1,45 @@
+{
+  "coord": {
+    "lon": -85.7594,
+    "lat": 38.2542
+  },
+  "weather": [
+    {
+      "id": 800,
+      "main": "Clear",
+      "description": "clear sky",
+      "icon": "01d"
+    }
+  ],
+  "base": "stations",
+  "main": {
+    "temp": 15.45,
+    "feels_like": 14.04,
+    "temp_min": 13.27,
+    "temp_max": 16.09,
+    "pressure": 1016,
+    "humidity": 38,
+    "sea_level": 1016,
+    "grnd_level": 997
+  },
+  "visibility": 10000,
+  "wind": {
+    "speed": 3.6,
+    "deg": 130
+  },
+  "clouds": {
+    "all": 0
+  },
+  "dt": 1744240771,
+  "sys": {
+    "type": 2,
+    "id": 2010269,
+    "country": "US",
+    "sunrise": 1744197326,
+    "sunset": 1744243991
+  },
+  "timezone": -14400,
+  "id": 4299276,
+  "name": "Louisville",
+  "cod": 200
+}
