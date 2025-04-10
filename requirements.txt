@@ -27,3 +27,4 @@ APScheduler
 
 # Utilities / Configuration
 python-dotenv
+nbformat
